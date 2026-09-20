@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Support Assistant</title>
+<style>
+  :root { color-scheme: light; font-family: Georgia, serif; color: #1c2521; background: #f4f1e9; }
+  * { box-sizing: border-box; }
+  body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
+  main { width: min(760px, 100%); }
+  h1 { margin: 0 0 8px; font-size: clamp(32px, 6vw, 56px); font-weight: 400; letter-spacing: -1px; }
+  .intro { margin: 0 0 30px; color: #667069; font: 16px/1.5 -apple-system, sans-serif; }
+  .chat-window { min-height: 80px; max-height: 52vh; overflow-y: auto; margin-bottom: 16px; }
+  .msg { width: fit-content; max-width: 88%; padding: 13px 16px; margin: 10px 0; border-radius: 3px; white-space: pre-wrap; font: 16px/1.5 -apple-system, sans-serif; }
+  .user { margin-left: auto; background: #dbe6dc; }
+  .bot { background: #fffdf8; border: 1px solid #ded9cd; }
+  .composer { display: flex; gap: 10px; border-bottom: 2px solid #1c2521; padding-bottom: 8px; }
+  input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; padding: 12px 0; font: 18px -apple-system, sans-serif; }
+  button { cursor: pointer; border: 0; background: #1c2521; color: #fffdf8; padding: 0 20px; font: 600 14px -apple-system, sans-serif; }
+  button:disabled { opacity: .55; cursor: wait; }
+  .status { min-height: 22px; margin-top: 12px; color: #8b3d2e; font: 13px -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Ask support.</h1>
+    <p class="intro">Search the support knowledge base and get a direct answer.</p>
+    <div id="chatWindow"></div>
+    <form class="composer" id="chatForm">
+      <input type="text" id="chatInput" placeholder="Ask a question..." autocomplete="off" required>
+      <button type="submit" id="sendButton">Ask</button>
+    </form>
+    <div class="status" id="status" role="status"></div>
+  </main>
+
+<script>
+const sessionId = "web-" + crypto.randomUUID();
+const form = document.getElementById("chatForm");
+const input = document.getElementById("chatInput");
+const button = document.getElementById("sendButton");
+const status = document.getElementById("status");
+
+async function sendChat() {
+  const message = input.value.trim();
+  if (!message) return;
+  addMessage("user", message);
+  input.value = "";
+  button.disabled = true;
+  status.textContent = "";
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, message })
+    });
+    if (!response.ok) throw new Error("The assistant could not answer right now.");
+    const res = await response.json();
+    addMessage("bot", res.answer);
+  } catch (e) {
+    status.textContent = e.message;
+  } finally {
+    button.disabled = false;
+    input.focus();
+  }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendChat();
+});
+
+function addMessage(role, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + (role === "user" ? "user" : "bot");
+  div.innerText = text;
+  document.getElementById("chatWindow").appendChild(div);
+}
+
+</script>
+</body>
+</html>
